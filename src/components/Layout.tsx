@@ -1,7 +1,7 @@
-import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { CheckSquare, Home, FolderOpen } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ReactNode } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { CheckSquare, Home, FolderOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,11 +9,11 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
-  
+
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: Home },
-    { name: 'Todo List', href: '/todos', icon: CheckSquare },
-    { name: 'Categories', href: '/categories', icon: FolderOpen },
+    { name: "Dashboard", href: "/", icon: Home },
+    { name: "Todo List", href: "/todos", icon: CheckSquare },
+    { name: "Categories", href: "/categories", icon: FolderOpen },
   ];
 
   return (
@@ -26,14 +26,14 @@ const Layout = ({ children }: LayoutProps) => {
               <div className="bg-gradient-primary rounded-lg p-2">
                 <CheckSquare className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-foreground">TodoMaster</h1>
+              <h1 className="text-xl font-bold text-foreground">CSA Tasktify</h1>
             </div>
-            
+
             <nav className="hidden md:flex items-center space-x-1">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.href;
-                
+
                 return (
                   <Link
                     key={item.name}
@@ -61,16 +61,14 @@ const Layout = ({ children }: LayoutProps) => {
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
-            
+
             return (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn(
                   "flex flex-col items-center space-y-1 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground"
                 )}
               >
                 <Icon className="h-5 w-5" />
@@ -82,9 +80,7 @@ const Layout = ({ children }: LayoutProps) => {
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 pb-20 md:pb-6">
-        {children}
-      </main>
+      <main className="container mx-auto px-4 py-6 pb-20 md:pb-6">{children}</main>
     </div>
   );
 };
