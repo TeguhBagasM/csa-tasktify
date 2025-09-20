@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTodoStore } from '@/stores/todoStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,16 +28,22 @@ interface CategorySelectorProps {
 }
 
 const CategorySelector = ({ value, onValueChange, placeholder = "Select category" }: CategorySelectorProps) => {
-  const { getRecentCategories, addCategory } = useTodoStore();
+  const { categories, addCategory, fetchCategories } = useTodoStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   
-  const recentCategories = getRecentCategories();
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (newCategoryName.trim()) {
-      const newCategory = addCategory(newCategoryName.trim());
-      onValueChange?.(newCategory.id);
+      await addCategory(newCategoryName.trim());
+      await fetchCategories();
+      const newCategory = categories.find(cat => cat.name === newCategoryName.trim());
+      if (newCategory) {
+        onValueChange?.(newCategory.id);
+      }
       setNewCategoryName('');
       setIsDialogOpen(false);
     }
@@ -56,17 +62,9 @@ const CategorySelector = ({ value, onValueChange, placeholder = "Select category
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {recentCategories.map((category) => (
+          {categories.map((category) => (
             <SelectItem key={category.id} value={category.id}>
-              <div className="flex items-center space-x-2">
-                {category.color && (
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: category.color }}
-                  />
-                )}
-                <span>{category.name}</span>
-              </div>
+              <span>{category.name}</span>
             </SelectItem>
           ))}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

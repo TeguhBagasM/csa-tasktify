@@ -1,236 +1,271 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Category, Task, SubTask, TodoStats } from '@/types/todo';
+import { supabase } from '@/integrations/supabase/client';
+import { Todo, Category, Subtask, TodoStats } from '@/types/todo';
 
 interface TodoStore {
+  todos: Todo[];
   categories: Category[];
-  tasks: Task[];
+  loading: boolean;
   
   // Category methods
-  addCategory: (name: string) => Category;
-  updateCategory: (id: string, updates: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
-  getRecentCategories: () => Category[];
+  fetchCategories: () => Promise<void>;
+  addCategory: (name: string) => Promise<void>;
+  updateCategory: (id: string, name: string) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
   
-  // Task methods
-  addTask: (title: string, categoryId: string, description?: string) => Task;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
+  // Todo methods
+  fetchTodos: () => Promise<void>;
+  addTodo: (todo: Omit<Todo, 'id' | 'created_at' | 'updated_at' | 'subtasks'>) => Promise<void>;
+  updateTodo: (id: string, updates: Partial<Todo>) => Promise<void>;
+  deleteTodo: (id: string) => Promise<void>;
   
   // Subtask methods
-  addSubtask: (taskId: string, title: string, description?: string) => SubTask;
-  updateSubtask: (taskId: string, subtaskId: string, updates: Partial<SubTask>) => void;
-  deleteSubtask: (taskId: string, subtaskId: string) => void;
-  toggleSubtask: (taskId: string, subtaskId: string) => void;
+  addSubtask: (todoId: string, subtask: Omit<Subtask, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateSubtask: (subtaskId: string, updates: Partial<Subtask>) => Promise<void>;
+  deleteSubtask: (subtaskId: string) => Promise<void>;
+  toggleSubtask: (subtaskId: string) => Promise<void>;
   
   // Stats
   getStats: () => TodoStats;
 }
 
-const defaultCategories: Category[] = [
-  {
-    id: '1',
-    name: 'Belajar Otodidak',
-    color: '#3B82F6',
-    createdAt: new Date(),
-    lastUsed: new Date(),
-  },
-  {
-    id: '2',
-    name: 'Masak Hari Ini',
-    color: '#EF4444',
-    createdAt: new Date(),
-    lastUsed: new Date(),
-  },
-  {
-    id: '3',
-    name: 'Kerjaan',
-    color: '#10B981',
-    createdAt: new Date(),
-    lastUsed: new Date(),
-  },
-];
+export const useTodoStore = create<TodoStore>((set, get) => ({
+  todos: [],
+  categories: [],
+  loading: false,
 
-export const useTodoStore = create<TodoStore>()(
-  persist(
-    (set, get) => ({
-      categories: defaultCategories,
-      tasks: [],
+  fetchCategories: async () => {
+    try {
+      set({ loading: true });
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('updated_at', { ascending: false });
       
-      addCategory: (name: string) => {
-        const newCategory: Category = {
-          id: Date.now().toString(),
-          name,
-          createdAt: new Date(),
-          lastUsed: new Date(),
-        };
-        
-        set((state) => ({
-          categories: [...state.categories, newCategory],
-        }));
-        
-        return newCategory;
-      },
-      
-      updateCategory: (id: string, updates: Partial<Category>) => {
-        set((state) => ({
-          categories: state.categories.map((cat) =>
-            cat.id === id ? { ...cat, ...updates } : cat
-          ),
-        }));
-      },
-      
-      deleteCategory: (id: string) => {
-        set((state) => ({
-          categories: state.categories.filter((cat) => cat.id !== id),
-          tasks: state.tasks.filter((task) => task.categoryId !== id),
-        }));
-      },
-      
-      getRecentCategories: () => {
-        const { categories } = get();
-        return categories
-          .sort((a, b) => b.lastUsed.getTime() - a.lastUsed.getTime())
-          .slice(0, 10);
-      },
-      
-      addTask: (title: string, categoryId: string, description?: string) => {
-        const newTask: Task = {
-          id: Date.now().toString(),
-          title,
-          description,
-          categoryId,
-          status: 'todo',
-          subtasks: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        
-        // Update category last used
-        set((state) => ({
-          tasks: [...state.tasks, newTask],
-          categories: state.categories.map((cat) =>
-            cat.id === categoryId ? { ...cat, lastUsed: new Date() } : cat
-          ),
-        }));
-        
-        return newTask;
-      },
-      
-      updateTask: (id: string, updates: Partial<Task>) => {
-        set((state) => ({
-          tasks: state.tasks.map((task) =>
-            task.id === id 
-              ? { ...task, ...updates, updatedAt: new Date() }
-              : task
-          ),
-        }));
-      },
-      
-      deleteTask: (id: string) => {
-        set((state) => ({
-          tasks: state.tasks.filter((task) => task.id !== id),
-        }));
-      },
-      
-      addSubtask: (taskId: string, title: string, description?: string) => {
-        const newSubtask: SubTask = {
-          id: Date.now().toString(),
-          title,
-          description,
-          completed: false,
-          createdAt: new Date(),
-        };
-        
-        set((state) => ({
-          tasks: state.tasks.map((task) =>
-            task.id === taskId
-              ? {
-                  ...task,
-                  subtasks: [...task.subtasks, newSubtask],
-                  updatedAt: new Date(),
-                }
-              : task
-          ),
-        }));
-        
-        return newSubtask;
-      },
-      
-      updateSubtask: (taskId: string, subtaskId: string, updates: Partial<SubTask>) => {
-        set((state) => ({
-          tasks: state.tasks.map((task) =>
-            task.id === taskId
-              ? {
-                  ...task,
-                  subtasks: task.subtasks.map((subtask) =>
-                    subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
-                  ),
-                  updatedAt: new Date(),
-                }
-              : task
-          ),
-        }));
-      },
-      
-      deleteSubtask: (taskId: string, subtaskId: string) => {
-        set((state) => ({
-          tasks: state.tasks.map((task) =>
-            task.id === taskId
-              ? {
-                  ...task,
-                  subtasks: task.subtasks.filter((subtask) => subtask.id !== subtaskId),
-                  updatedAt: new Date(),
-                }
-              : task
-          ),
-        }));
-      },
-      
-      toggleSubtask: (taskId: string, subtaskId: string) => {
-        const { tasks, updateTask } = get();
-        const task = tasks.find((t) => t.id === taskId);
-        if (!task) return;
-        
-        // Toggle subtask
-        const updatedSubtasks = task.subtasks.map((subtask) =>
-          subtask.id === subtaskId
-            ? { ...subtask, completed: !subtask.completed }
-            : subtask
-        );
-        
-        // Calculate new status
-        const completedCount = updatedSubtasks.filter((s) => s.completed).length;
-        const totalCount = updatedSubtasks.length;
-        
-        let newStatus: Task['status'] = 'todo';
-        if (totalCount === 0) {
-          newStatus = 'todo';
-        } else if (completedCount === totalCount) {
-          newStatus = 'done';
-        } else if (completedCount > 0) {
-          newStatus = 'in-progress';
-        }
-        
-        updateTask(taskId, {
-          subtasks: updatedSubtasks,
-          status: newStatus,
-        });
-      },
-      
-      getStats: () => {
-        const { tasks, categories } = get();
-        
-        return {
-          totalTasks: tasks.length,
-          completedTasks: tasks.filter((task) => task.status === 'done').length,
-          inProgressTasks: tasks.filter((task) => task.status === 'in-progress').length,
-          totalCategories: categories.length,
-        };
-      },
-    }),
-    {
-      name: 'todo-storage',
+      if (error) throw error;
+      set({ categories: data || [] });
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    } finally {
+      set({ loading: false });
     }
-  )
-);
+  },
+
+  fetchTodos: async () => {
+    try {
+      set({ loading: true });
+      const { data: todosData, error: todosError } = await supabase
+        .from('todos')
+        .select(`
+          *,
+          subtasks (*)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (todosError) throw todosError;
+      
+      const todos = todosData?.map(todo => ({
+        ...todo,
+        status: todo.status as 'todo' | 'inprogress' | 'done',
+        subtasks: todo.subtasks || []
+      })) || [];
+      
+      set({ todos });
+    } catch (error) {
+      console.error('Error fetching todos:', error);
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  addCategory: async (name) => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({ name })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      set((state) => ({ categories: [data, ...state.categories] }));
+    } catch (error) {
+      console.error('Error adding category:', error);
+    }
+  },
+
+  updateCategory: async (id, name) => {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({ name })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      set((state) => ({
+        categories: state.categories.map((category) =>
+          category.id === id ? { ...category, name } : category
+        ),
+      }));
+    } catch (error) {
+      console.error('Error updating category:', error);
+    }
+  },
+
+  deleteCategory: async (id) => {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      set((state) => ({
+        categories: state.categories.filter((category) => category.id !== id),
+        todos: state.todos.filter((todo) => todo.category_id !== id),
+      }));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+    }
+  },
+
+  addTodo: async (todo) => {
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .insert(todo)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      const newTodo = { ...data, status: data.status as 'todo' | 'inprogress' | 'done', subtasks: [] };
+      set((state) => ({ todos: [newTodo, ...state.todos] }));
+    } catch (error) {
+      console.error('Error adding todo:', error);
+    }
+  },
+
+  updateTodo: async (id, updates) => {
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .update(updates)
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      set((state) => ({
+        todos: state.todos.map((todo) =>
+          todo.id === id ? { ...todo, ...updates } : todo
+        ),
+      }));
+    } catch (error) {
+      console.error('Error updating todo:', error);
+    }
+  },
+
+  deleteTodo: async (id) => {
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      set((state) => ({
+        todos: state.todos.filter((todo) => todo.id !== id),
+      }));
+    } catch (error) {
+      console.error('Error deleting todo:', error);
+    }
+  },
+
+  addSubtask: async (todoId, subtask) => {
+    try {
+      const { data, error } = await supabase
+        .from('subtasks')
+        .insert({ ...subtask, todo_id: todoId })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      set((state) => ({
+        todos: state.todos.map((todo) =>
+          todo.id === todoId
+            ? { ...todo, subtasks: [...(todo.subtasks || []), data] }
+            : todo
+        ),
+      }));
+    } catch (error) {
+      console.error('Error adding subtask:', error);
+    }
+  },
+
+  updateSubtask: async (subtaskId, updates) => {
+    try {
+      const { error } = await supabase
+        .from('subtasks')
+        .update(updates)
+        .eq('id', subtaskId);
+      
+      if (error) throw error;
+      
+      set((state) => ({
+        todos: state.todos.map((todo) => ({
+          ...todo,
+          subtasks: todo.subtasks?.map((subtask) =>
+            subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
+          ) || [],
+        })),
+      }));
+    } catch (error) {
+      console.error('Error updating subtask:', error);
+    }
+  },
+
+  deleteSubtask: async (subtaskId) => {
+    try {
+      const { error } = await supabase
+        .from('subtasks')
+        .delete()
+        .eq('id', subtaskId);
+      
+      if (error) throw error;
+      
+      set((state) => ({
+        todos: state.todos.map((todo) => ({
+          ...todo,
+          subtasks: todo.subtasks?.filter((subtask) => subtask.id !== subtaskId) || [],
+        })),
+      }));
+    } catch (error) {
+      console.error('Error deleting subtask:', error);
+    }
+  },
+
+  toggleSubtask: async (subtaskId) => {
+    const { todos } = get();
+    const todo = todos.find(t => t.subtasks?.some(s => s.id === subtaskId));
+    const subtask = todo?.subtasks?.find(s => s.id === subtaskId);
+    
+    if (subtask) {
+      await get().updateSubtask(subtaskId, { completed: !subtask.completed });
+    }
+  },
+
+  getStats: () => {
+    const { todos, categories } = get();
+    
+    return {
+      totalTodos: todos.length,
+      completedTodos: todos.filter((todo) => todo.status === 'done').length,
+      inProgressTodos: todos.filter((todo) => todo.status === 'inprogress').length,
+      totalCategories: categories.length,
+    };
+  },
+}));

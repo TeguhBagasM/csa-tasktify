@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTodoStore } from '@/stores/todoStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,15 +16,20 @@ import {
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
-  const { tasks, categories, getStats } = useTodoStore();
+  const { todos, categories, getStats, fetchTodos, fetchCategories } = useTodoStore();
   const stats = getStats();
+
+  useEffect(() => {
+    fetchCategories();
+    fetchTodos();
+  }, [fetchCategories, fetchTodos]);
   
-  const recentTasks = tasks
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+  const recentTasks = todos
+    .sort((a, b) => new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime())
     .slice(0, 5);
 
-  const progressPercentage = stats.totalTasks > 0 
-    ? Math.round((stats.completedTasks / stats.totalTasks) * 100)
+  const progressPercentage = stats.totalTodos > 0 
+    ? Math.round((stats.completedTodos / stats.totalTodos) * 100)
     : 0;
 
   return (
@@ -52,7 +58,7 @@ const Dashboard = () => {
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTasks}</div>
+            <div className="text-2xl font-bold">{stats.totalTodos}</div>
             <p className="text-xs text-muted-foreground">
               {stats.totalCategories} categories
             </p>
@@ -65,7 +71,7 @@ const Dashboard = () => {
             <CheckSquare className="h-4 w-4 text-done" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-done">{stats.completedTasks}</div>
+            <div className="text-2xl font-bold text-done">{stats.completedTodos}</div>
             <p className="text-xs text-muted-foreground">
               {progressPercentage}% completion rate
             </p>
@@ -78,7 +84,7 @@ const Dashboard = () => {
             <Clock className="h-4 w-4 text-in-progress" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-in-progress">{stats.inProgressTasks}</div>
+            <div className="text-2xl font-bold text-in-progress">{stats.inProgressTodos}</div>
             <p className="text-xs text-muted-foreground">
               Active tasks
             </p>
@@ -100,7 +106,7 @@ const Dashboard = () => {
       </div>
 
       {/* Progress Overview */}
-      {stats.totalTasks > 0 && (
+      {stats.totalTodos > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -122,15 +128,15 @@ const Dashboard = () => {
               </div>
               <div className="grid grid-cols-3 gap-4 pt-2">
                 <div className="text-center">
-                  <div className="text-lg font-bold text-todo">{stats.totalTasks - stats.completedTasks - stats.inProgressTasks}</div>
+                  <div className="text-lg font-bold text-todo">{stats.totalTodos - stats.completedTodos - stats.inProgressTodos}</div>
                   <div className="text-xs text-muted-foreground">Todo</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-in-progress">{stats.inProgressTasks}</div>
+                  <div className="text-lg font-bold text-in-progress">{stats.inProgressTodos}</div>
                   <div className="text-xs text-muted-foreground">In Progress</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-done">{stats.completedTasks}</div>
+                  <div className="text-lg font-bold text-done">{stats.completedTodos}</div>
                   <div className="text-xs text-muted-foreground">Completed</div>
                 </div>
               </div>
@@ -174,19 +180,19 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {recentTasks.map((task) => {
-                const category = categories.find(c => c.id === task.categoryId);
+              {recentTasks.map((todo) => {
+                const category = categories.find(c => c.id === todo.category_id);
                 return (
                   <div
-                    key={task.id}
+                    key={todo.id}
                     className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3">
                         <h4 className="font-medium text-foreground truncate">
-                          {task.title}
+                          {todo.title}
                         </h4>
-                        <StatusBadge status={task.status} />
+                        <StatusBadge status={todo.status} />
                       </div>
                       <div className="flex items-center space-x-2 mt-1">
                         {category && (
@@ -194,9 +200,9 @@ const Dashboard = () => {
                             {category.name}
                           </Badge>
                         )}
-                        {task.subtasks.length > 0 && (
+                        {todo.subtasks && todo.subtasks.length > 0 && (
                           <span className="text-xs text-muted-foreground">
-                            {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks
+                            {todo.subtasks.filter(s => s.completed).length}/{todo.subtasks.length} subtasks
                           </span>
                         )}
                       </div>

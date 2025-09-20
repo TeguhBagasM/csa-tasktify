@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTodoStore } from '@/stores/todoStore';
-import { Task } from '@/types/todo';
+import { Todo } from '@/types/todo';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,14 +38,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface TaskCardProps {
-  task: Task;
+  todo: Todo;
 }
 
-const TaskCard = ({ task }: TaskCardProps) => {
+const TaskCard = ({ todo }: TaskCardProps) => {
   const {
     categories,
-    updateTask,
-    deleteTask,
+    updateTodo,
+    deleteTodo,
     addSubtask,
     updateSubtask,
     deleteSubtask,
@@ -53,22 +53,23 @@ const TaskCard = ({ task }: TaskCardProps) => {
   } = useTodoStore();
   
   const [isOpen, setIsOpen] = useState(false);
-  const [showDescription, setShowDescription] = useState(!!task.description);
+  const [showDescription, setShowDescription] = useState(!!todo.description);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [newSubtaskDescription, setNewSubtaskDescription] = useState('');
   const [showSubtaskDescription, setShowSubtaskDescription] = useState(false);
   const [isSubtaskDialogOpen, setIsSubtaskDialogOpen] = useState(false);
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
   
-  const category = categories.find(c => c.id === task.categoryId);
+  const category = categories.find(c => c.id === todo.category_id);
   
-  const handleAddSubtask = () => {
+  const handleAddSubtask = async () => {
     if (newSubtaskTitle.trim()) {
-      addSubtask(
-        task.id,
-        newSubtaskTitle.trim(),
-        newSubtaskDescription.trim() || undefined
-      );
+      await addSubtask(todo.id, {
+        title: newSubtaskTitle.trim(),
+        description: newSubtaskDescription.trim() || undefined,
+        completed: false,
+        todo_id: todo.id,
+      });
       setNewSubtaskTitle('');
       setNewSubtaskDescription('');
       setShowSubtaskDescription(false);
@@ -86,7 +87,7 @@ const TaskCard = ({ task }: TaskCardProps) => {
     setExpandedSubtasks(newExpanded);
   };
 
-  const completedSubtasks = task.subtasks.filter(s => s.completed).length;
+  const completedSubtasks = todo.subtasks?.filter(s => s.completed).length || 0;
 
   return (
     <Card className="bg-gradient-card hover:shadow-card transition-all duration-200 animate-fade-in">
@@ -101,26 +102,18 @@ const TaskCard = ({ task }: TaskCardProps) => {
               )}
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-foreground truncate">
-                  {task.title}
+                  {todo.title}
                 </h3>
                 <div className="flex items-center space-x-2 mt-1">
-                  <StatusBadge status={task.status} />
+                  <StatusBadge status={todo.status} />
                   {category && (
-                    <Badge
-                      variant="secondary"
-                      className="text-xs"
-                      style={{
-                        backgroundColor: category.color ? `${category.color}20` : undefined,
-                        color: category.color || undefined,
-                        borderColor: category.color ? `${category.color}40` : undefined,
-                      }}
-                    >
+                    <Badge variant="secondary" className="text-xs">
                       {category.name}
                     </Badge>
                   )}
-                  {task.subtasks.length > 0 && (
+                  {todo.subtasks && todo.subtasks.length > 0 && (
                     <span className="text-xs text-muted-foreground">
-                      {completedSubtasks}/{task.subtasks.length} subtasks
+                      {completedSubtasks}/{todo.subtasks.length} subtasks
                     </span>
                   )}
                 </div>
@@ -142,7 +135,7 @@ const TaskCard = ({ task }: TaskCardProps) => {
                   {showDescription ? 'Hide' : 'Show'} Description
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => deleteTask(task.id)}
+                  onClick={() => deleteTodo(todo.id)}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -159,8 +152,8 @@ const TaskCard = ({ task }: TaskCardProps) => {
             {showDescription && (
               <div>
                 <Textarea
-                  value={task.description || ''}
-                  onChange={(e) => updateTask(task.id, { description: e.target.value })}
+                  value={todo.description || ''}
+                  onChange={(e) => updateTodo(todo.id, { description: e.target.value })}
                   placeholder="Add task description..."
                   className="min-h-[80px] resize-none"
                 />
@@ -234,20 +227,20 @@ const TaskCard = ({ task }: TaskCardProps) => {
                 </Dialog>
               </div>
 
-              {task.subtasks.length === 0 ? (
+              {!todo.subtasks || todo.subtasks.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No subtasks yet. Add one to break down this task.
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {task.subtasks.map((subtask) => (
+                  {todo.subtasks.map((subtask) => (
                     <div
                       key={subtask.id}
                       className="flex items-start space-x-3 p-3 bg-muted/50 rounded-lg"
                     >
                       <Checkbox
                         checked={subtask.completed}
-                        onCheckedChange={() => toggleSubtask(task.id, subtask.id)}
+                        onCheckedChange={() => toggleSubtask(subtask.id)}
                         className="mt-0.5"
                       />
                       
@@ -278,7 +271,7 @@ const TaskCard = ({ task }: TaskCardProps) => {
                               variant="ghost"
                               size="sm"
                               className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                              onClick={() => deleteSubtask(task.id, subtask.id)}
+                              onClick={() => deleteSubtask(subtask.id)}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -290,7 +283,7 @@ const TaskCard = ({ task }: TaskCardProps) => {
                             <Textarea
                               value={subtask.description}
                               onChange={(e) =>
-                                updateSubtask(task.id, subtask.id, {
+                                updateSubtask(subtask.id, {
                                   description: e.target.value,
                                 })
                               }

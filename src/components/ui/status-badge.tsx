@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface StatusBadgeProps {
-  status: 'todo' | 'in-progress' | 'done';
+  status: 'todo' | 'inprogress' | 'done';
   className?: string;
 }
 
@@ -15,7 +15,7 @@ const StatusBadge = ({ status, className }: StatusBadgeProps) => {
       icon: AlertCircle,
       label: 'Todo'
     },
-    'in-progress': {
+    'inprogress': {
       bg: 'bg-in-progress-light',
       text: 'text-in-progress',
       border: 'border-in-progress/20',

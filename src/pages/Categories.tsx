@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTodoStore } from '@/stores/todoStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,44 +26,23 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Plus, Edit2, Trash2, FolderOpen, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
-
-const colorOptions = [
-  '#3B82F6', // Blue
-  '#EF4444', // Red
-  '#10B981', // Green
-  '#F59E0B', // Yellow
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#06B6D4', // Cyan
-  '#84CC16', // Lime
-  '#F97316', // Orange
-  '#6366F1', // Indigo
-];
 
 const Categories = () => {
-  const { categories, tasks, addCategory, updateCategory, deleteCategory } = useTodoStore();
+  const { categories, todos, addCategory, updateCategory, deleteCategory, fetchCategories } = useTodoStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState('');
-  const [categoryColor, setCategoryColor] = useState(colorOptions[0]);
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const handleSubmit = async () => {
     if (categoryName.trim()) {
       if (editingCategory) {
-        updateCategory(editingCategory, {
-          name: categoryName.trim(),
-          color: categoryColor,
-        });
+        await updateCategory(editingCategory, categoryName.trim());
       } else {
-        addCategory(categoryName.trim());
-        // Update the color after creation
-        setTimeout(() => {
-          const newCategory = categories.find(c => c.name === categoryName.trim());
-          if (newCategory) {
-            updateCategory(newCategory.id, { color: categoryColor });
-          }
-        }, 100);
+        await addCategory(categoryName.trim());
       }
       resetForm();
     }
@@ -71,7 +50,6 @@ const Categories = () => {
 
   const resetForm = () => {
     setCategoryName('');
-    setCategoryColor(colorOptions[0]);
     setEditingCategory(null);
     setIsDialogOpen(false);
   };
@@ -80,14 +58,13 @@ const Categories = () => {
     const category = categories.find(c => c.id === categoryId);
     if (category) {
       setCategoryName(category.name);
-      setCategoryColor(category.color || colorOptions[0]);
       setEditingCategory(categoryId);
       setIsDialogOpen(true);
     }
   };
 
   const getTaskCountForCategory = (categoryId: string) => {
-    return tasks.filter(task => task.categoryId === categoryId).length;
+    return todos.filter(todo => todo.category_id === categoryId).length;
   };
 
   return (
@@ -134,25 +111,6 @@ const Categories = () => {
                   autoFocus
                 />
               </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Color</Label>
-                <div className="col-span-3 flex flex-wrap gap-2">
-                  {colorOptions.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`w-8 h-8 rounded-full border-2 transition-all ${
-                        categoryColor === color
-                          ? 'border-foreground scale-110'
-                          : 'border-border hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => setCategoryColor(color)}
-                    />
-                  ))}
-                </div>
-              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={resetForm}>
@@ -188,7 +146,7 @@ const Categories = () => {
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tasks.length}</div>
+            <div className="text-2xl font-bold">{todos.length}</div>
           </CardContent>
         </Card>
 
@@ -199,7 +157,7 @@ const Categories = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {categories.length > 0 ? Math.round(tasks.length / categories.length) : 0}
+              {categories.length > 0 ? Math.round(todos.length / categories.length) : 0}
             </div>
           </CardContent>
         </Card>
@@ -243,10 +201,7 @@ const Categories = () => {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: category.color || '#3B82F6' }}
-                        />
+                        <div className="w-4 h-4 rounded-full bg-primary" />
                         <CardTitle className="text-lg">{category.name}</CardTitle>
                       </div>
                       
@@ -295,16 +250,6 @@ const Categories = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Tasks</span>
                       <Badge variant="secondary">{taskCount}</Badge>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      <span>Created {format(category.createdAt, 'MMM d, yyyy')}</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      <span>Last used {format(category.lastUsed, 'MMM d, yyyy')}</span>
                     </div>
                   </CardContent>
                 </Card>

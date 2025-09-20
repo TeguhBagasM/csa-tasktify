@@ -1,33 +1,34 @@
 export interface Category {
   id: string;
   name: string;
-  color?: string;
-  createdAt: Date;
-  lastUsed: Date;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface SubTask {
+export interface Subtask {
   id: string;
+  todo_id: string;
   title: string;
   description?: string;
   completed: boolean;
-  createdAt: Date;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface Task {
+export interface Todo {
   id: string;
+  category_id: string;
   title: string;
   description?: string;
-  categoryId: string;
-  status: 'todo' | 'in-progress' | 'done';
-  subtasks: SubTask[];
-  createdAt: Date;
-  updatedAt: Date;
+  status: 'todo' | 'inprogress' | 'done';
+  subtasks?: Subtask[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface TodoStats {
-  totalTasks: number;
-  completedTasks: number;
-  inProgressTasks: number;
+  totalTodos: number;
+  completedTodos: number;
+  inProgressTodos: number;
   totalCategories: number;
 }

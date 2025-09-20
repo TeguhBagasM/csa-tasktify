@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTodoStore } from '@/stores/todoStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ import {
 import { Plus, FileText, Filter, Search } from 'lucide-react';
 
 const TodoList = () => {
-  const { tasks, categories, addTask } = useTodoStore();
+  const { todos, categories, addTodo, fetchTodos, fetchCategories } = useTodoStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
@@ -37,13 +37,19 @@ const TodoList = () => {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleAddTask = () => {
+  useEffect(() => {
+    fetchCategories();
+    fetchTodos();
+  }, [fetchCategories, fetchTodos]);
+
+  const handleAddTask = async () => {
     if (newTaskTitle.trim() && selectedCategory) {
-      addTask(
-        newTaskTitle.trim(),
-        selectedCategory,
-        newTaskDescription.trim() || undefined
-      );
+      await addTodo({
+        title: newTaskTitle.trim(),
+        category_id: selectedCategory,
+        description: newTaskDescription.trim() || undefined,
+        status: 'todo',
+      });
       setNewTaskTitle('');
       setNewTaskDescription('');
       setSelectedCategory('');
@@ -53,20 +59,20 @@ const TodoList = () => {
   };
 
   // Filter tasks
-  const filteredTasks = tasks.filter((task) => {
-    const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
-    const matchesCategory = filterCategory === 'all' || task.categoryId === filterCategory;
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.description?.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredTasks = todos.filter((todo) => {
+    const matchesStatus = filterStatus === 'all' || todo.status === filterStatus;
+    const matchesCategory = filterCategory === 'all' || todo.category_id === filterCategory;
+    const matchesSearch = todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         todo.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
     return matchesStatus && matchesCategory && matchesSearch;
   });
 
   // Group tasks by status
   const groupedTasks = {
-    todo: filteredTasks.filter(task => task.status === 'todo'),
-    'in-progress': filteredTasks.filter(task => task.status === 'in-progress'),
-    done: filteredTasks.filter(task => task.status === 'done'),
+    todo: filteredTasks.filter(todo => todo.status === 'todo'),
+    inprogress: filteredTasks.filter(todo => todo.status === 'inprogress'),
+    done: filteredTasks.filter(todo => todo.status === 'done'),
   };
 
   return (
@@ -180,7 +186,7 @@ const TodoList = () => {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="todo">Todo</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="inprogress">In Progress</SelectItem>
                 <SelectItem value="done">Done</SelectItem>
               </SelectContent>
             </Select>
@@ -228,7 +234,7 @@ const TodoList = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center justify-between">
               <span>In Progress</span>
-              <Badge variant="secondary">{groupedTasks['in-progress'].length}</Badge>
+              <Badge variant="secondary">{groupedTasks.inprogress.length}</Badge>
             </CardTitle>
           </CardHeader>
         </Card>
@@ -255,7 +261,7 @@ const TodoList = () => {
                 <div>
                   <h3 className="text-lg font-medium text-foreground">No tasks found</h3>
                   <p className="text-muted-foreground">
-                    {tasks.length === 0 
+                    {todos.length === 0 
                       ? "Create your first task to get started"
                       : "Try adjusting your filters or search query"
                     }
@@ -272,8 +278,8 @@ const TodoList = () => {
             </CardContent>
           </Card>
         ) : (
-          filteredTasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+          filteredTasks.map((todo) => (
+            <TaskCard key={todo.id} todo={todo} />
           ))
         )}
       </div>
